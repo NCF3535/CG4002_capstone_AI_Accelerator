@@ -1,9 +1,3 @@
-"""
-MTL Neural Network for Pickleball AI.
-
-Input(6) -> SharedTrunk[Linear+BN+ReLU6] -> RegHead(6) + ClsHead(6)
-ReLU6 bounded activation for HLS fixed-point compatibility.
-"""
 
 import torch
 import torch.nn as nn
@@ -12,7 +6,6 @@ from typing import Tuple, Optional
 
 
 class ReLU6(nn.Module):
-    """Bounded activation: min(max(0, x), 6). HLS-friendly."""
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.clamp(x, min=0, max=6)
 
@@ -78,7 +71,6 @@ class MTLPickleballNet(nn.Module):
 
 
 class FocalLoss(nn.Module):
-    """FL(p) = -alpha * (1-p)^gamma * log(p). Focuses on hard misclassified examples."""
     def __init__(self, alpha: Optional[torch.Tensor] = None, gamma: float = 2.0, reduction: str = 'mean'):
         super().__init__()
         self.gamma = gamma
@@ -99,7 +91,6 @@ class FocalLoss(nn.Module):
 
 
 class MTLLoss(nn.Module):
-    """Weighted sum of MSE (regression) + CE/Focal (classification)."""
     
     def __init__(
         self,

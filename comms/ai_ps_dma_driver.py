@@ -92,9 +92,9 @@ class PickleballPredictor:
         t_start = time.perf_counter()
         while True:
             status = self.dma_mmio.read(S2MM_DMASR)
-            if status & 0x0002:   # Idle
+            if status & 0x0002:
                 break
-            if status & 0x0070:   # DMAIntErr | DMASlvErr | DMADecErr
+            if status & 0x0070:
                 self._reset_dma()
                 raise RuntimeError(f"DMA error: S2MM_DMASR=0x{status:08x}")
             if (time.perf_counter() - t_start) * 1e6 > TIMEOUT_US:
@@ -130,10 +130,8 @@ class PickleballPredictor:
     def benchmark(self, n_iterations: int = 1000) -> dict:
         test_input = [16.33, 18.370001, 1.052669, -11.010001, -8.82, 0.632585]
         times = []
-        # Warm up
         for _ in range(10):
             self.predict(test_input)
-        # Benchmark
         for _ in range(n_iterations):
             _, _, _, t = self.predict_timed(test_input)
             times.append(t)

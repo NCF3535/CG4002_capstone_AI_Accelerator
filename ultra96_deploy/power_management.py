@@ -33,7 +33,6 @@ def write_sysfs(path: str, value: str):
 
 
 def get_cpu_info():
-    # prints current frequency, governor, and range for each core
     print("\n--- CPU Frequency Info ---")
     avail = get_available_governors(0)
     if avail:
@@ -64,11 +63,9 @@ def get_available_governors(cpu_id: int = 0) -> list:
 
 
 def set_cpu_governor(governor: str):
-    # sets governor on all online cores with auto-fallback if unavailable
     available = get_available_governors(0)
     if available and governor not in available:
         print(f"\n  WARNING: '{governor}' not available. Available: {available}")
-        # Fall back: prefer ondemand > conservative > performance > first available
         for fallback in ['ondemand', 'conservative', 'performance']:
             if fallback in available:
                 print(f"  Falling back to '{fallback}'")
@@ -94,7 +91,6 @@ def set_cpu_governor(governor: str):
 
 
 def set_cpu_frequency(freq_khz: int):
-    # sets exact frequency (needs userspace governor) or clamps min/max
     available = get_available_governors(0)
     if 'userspace' not in available:
         print(f"\n  WARNING: 'userspace' governor not available. Cannot set exact frequency.")
@@ -121,11 +117,10 @@ def set_cpu_frequency(freq_khz: int):
 
 
 def set_online_cores(n_cores: int):
-    # enables first n cores, offlines the rest (CPU0 always on)
     total = get_cpu_count()
     n_cores = max(1, min(n_cores, total))
     print(f"\nSetting {n_cores}/{total} CPU cores online...")
-    for cpu_id in range(1, total):  # CPU0 always online
+    for cpu_id in range(1, total):
         path = f"{CPUFREQ_BASE}/cpu{cpu_id}/online"
         if os.path.exists(path):
             value = "1" if cpu_id < n_cores else "0"
@@ -137,7 +132,6 @@ def set_online_cores(n_cores: int):
 
 
 def set_pl_clock(freq_mhz: int, clock_idx: int = 0):
-    # sets PL fabric clock via PYNQ Clocks API or sysfs fallback
     print(f"\nSetting PL clock {clock_idx} to {freq_mhz} MHz...")
     try:
         from pynq import Clocks
@@ -154,8 +148,6 @@ def set_pl_clock(freq_mhz: int, clock_idx: int = 0):
 
 
 def disable_pl_clocks(keep_clock0=True):
-    # sets PL clocks 1-3 to minimum (~1 MHz) via PYNQ Clocks API
-    # (full gate-off via sysfs enable not available on this kernel)
     print("\n--- Minimising Unused PL Clocks ---")
     try:
         from pynq import Clocks
@@ -173,7 +165,6 @@ def disable_pl_clocks(keep_clock0=True):
 
 
 def enable_pl_clocks(freq_mhz: int = 100):
-    # restores all 4 PL clocks to a given frequency
     print(f"\n--- Restoring PL Clocks to {freq_mhz} MHz ---")
     try:
         from pynq import Clocks
@@ -203,7 +194,6 @@ def get_pl_clock_info():
 
 
 def disable_unused_peripherals():
-    # disables BT and sets DP to auto-power (skips WiFi for SSH)
     print("\n--- Disabling Unused Peripherals ---")
 
     bt_path = "/sys/class/rfkill/rfkill0/state"
@@ -229,9 +219,6 @@ def enable_all_peripherals():
 
 
 def read_power_watts() -> float:
-    # reads TOTAL board power by summing ALL power rails from IRPS5401 PMICs
-    # Ultra96-V2 has 2x IRPS5401 (hwmon0, hwmon1), each with 6 channels
-    # hwmon sysfs power*_input is in microwatts
     hwmon_base = "/sys/class/hwmon"
     if not os.path.isdir(hwmon_base):
         return -1.0
@@ -241,13 +228,11 @@ def read_power_watts() -> float:
         hwmon_path = os.path.join(hwmon_base, hwmon)
         if not os.path.isdir(hwmon_path):
             continue
-        # only read from IRPS5401 PMICs (skip iio_hwmon etc)
         name_path = os.path.join(hwmon_path, "name")
         if os.path.exists(name_path):
             name = read_sysfs(name_path)
             if "irps5401" not in name:
                 continue
-        # sum V * I for each channel (more reliable than power*_input on some FW)
         idx = 1
         while True:
             v_path = os.path.join(hwmon_path, f"in{idx}_input")
@@ -257,7 +242,7 @@ def read_power_watts() -> float:
             try:
                 v_mv = int(read_sysfs(v_path))
                 i_ma = int(read_sysfs(i_path))
-                total_uw += v_mv * i_ma  # mV * mA = uW
+                total_uw += v_mv * i_ma
                 found = True
             except ValueError:
                 pass
@@ -268,7 +253,6 @@ def read_power_watts() -> float:
 
 
 def get_power_info():
-    # prints per-rail breakdown and total board power
     print("\n--- Power Consumption (per rail) ---")
     hwmon_base = "/sys/class/hwmon"
     total_mw = 0
@@ -316,7 +300,7 @@ PROFILES = {
         'governor': 'ondemand',
         'cores': 4,
         'pl_freq_mhz': 100,
-        'cpu_freq_mhz': None,       # let governor manage
+        'cpu_freq_mhz': None,
         'restore_clocks': True,
     },
     'performance': {
@@ -352,7 +336,6 @@ PROFILES = {
 
 
 def apply_profile(profile_name: str):
-    # applies a named power profile (governor + cores + PL clock + peripherals)
     if profile_name not in PROFILES:
         print(f"Unknown profile: {profile_name}")
         print(f"Available: {list(PROFILES.keys())}")
@@ -367,7 +350,6 @@ def apply_profile(profile_name: str):
     set_cpu_governor(profile['governor'])
     set_online_cores(profile['cores'])
 
-    # set CPU frequency if specified, otherwise let governor manage
     cpu_freq = profile.get('cpu_freq_mhz')
     if cpu_freq:
         set_cpu_frequency(cpu_freq * 1000)

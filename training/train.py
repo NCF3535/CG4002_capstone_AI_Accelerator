@@ -1,10 +1,3 @@
-"""
-Final training script for Pickleball MTL model.
-
-Run after tuner.py has produced ./artifacts/best_params.json:
-    python train.py                          # uses best_params.json automatically
-    python train.py --ignore_tuner           # uses hard-coded CONFIG fallback
-"""
 
 import argparse
 import json
@@ -44,7 +37,6 @@ plt.rcParams.update({
     "savefig.dpi": 180,            "font.size": 9,
 })
 
-# Fallback config (used when --ignore_tuner or no best_params.json)
 FALLBACK_CONFIG = {
     "input_dim": 6,
     "hidden_dim": 512,
@@ -65,7 +57,6 @@ FALLBACK_CONFIG = {
 
 
 def load_best_params(params_path: str) -> dict:
-    """Load best balanced params from tuner output and merge with defaults."""
     with open(params_path) as f:
         data = json.load(f)
     best = data["best_balanced"]["params"]
@@ -107,7 +98,6 @@ def compute_class_weights(y_cls, device):
     return torch.tensor(weights, dtype=torch.float32).to(device)
 
 
-# ── Plots ──────────────────────────────────────────────────────────────────
 
 def plot_training_curves(history, out_dir):
     fig, axes = plt.subplots(2, 2, figsize=(14, 9))
@@ -214,7 +204,6 @@ def plot_regression_errors(y_true, y_pred, out_dir, split_name="val"):
     print(f"  Saved: {path}")
 
 
-# ── Evaluation ─────────────────────────────────────────────────────────────
 
 def evaluate_split(model, data, split, device):
     X     = torch.FloatTensor(data[f"X_{split}"]).to(device)
@@ -248,7 +237,6 @@ def save_report(results, history, config, out_dir):
     print(f"  Saved: {path}")
 
 
-# ── Main training loop ─────────────────────────────────────────────────────
 
 def train(ignore_tuner: bool = False):
     device = get_device()
@@ -265,7 +253,6 @@ def train(ignore_tuner: bool = False):
     data         = load_data()
     class_weights = compute_class_weights(data["y_cls_train"], device)
 
-    # Always derive input_dim from actual data, not config
     cfg["input_dim"] = data["X_train"].shape[1]
 
     train_ds = TensorDataset(

@@ -1,13 +1,3 @@
-"""
-Export trained PyTorch weights to HLS C header with INT8 quantization.
-
-Per-tensor symmetric quantization:
-    scale = max(|W|) / 127
-    W_q   = round(W / scale).clip(-128, 127)
-
-Usage:
-    python export_weights_int8.py
-"""
 
 import argparse
 import json
@@ -30,7 +20,6 @@ DEFAULT_CONFIG = {
 
 
 def quantize_symmetric(W: np.ndarray):
-    """Per-tensor symmetric quantization to int8. Returns (W_q, scale)."""
     amax = np.max(np.abs(W))
     if amax == 0:
         return np.zeros_like(W, dtype=np.int8), 1.0
@@ -94,7 +83,6 @@ def main():
     OUT_CLS = cfg['num_classes']
     HEAD_HIDDEN = HIDDEN // 2
 
-    # Fuse BatchNorm into Linear weights (no-op if use_batch_norm=False)
     fused_weights = []
     fused_biases = []
 

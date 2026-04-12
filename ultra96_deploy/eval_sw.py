@@ -20,7 +20,6 @@ CLASS_NAMES = ['Drive', 'Drop', 'Dink', 'Lob', 'SpeedUp', 'HandBattle']
 
 
 def confusion_matrix_numpy(y_true, y_pred, num_classes):
-    # Compute confusion matrix using numpy only (no sklearn)
     cm = np.zeros((num_classes, num_classes), dtype=int)
     for i in range(len(y_true)):
         cm[y_true[i], y_pred[i]] += 1
@@ -28,7 +27,6 @@ def confusion_matrix_numpy(y_true, y_pred, num_classes):
 
 
 def numpy_inference(X_raw: np.ndarray, weights: dict) -> tuple:
-    # forward pass in float64 (no BN, 2 trunk layers)
     def relu6(x):
         return np.clip(x, 0, 6)
 
@@ -59,7 +57,6 @@ def main():
     parser.add_argument("--n_samples", type=int, default=100)
     args = parser.parse_args()
 
-    # load test data
     data = np.load(args.data)
     X_test_scaled = data['X_test']
     y_cls_test = data['y_cls_test']
@@ -83,7 +80,6 @@ def main():
 
     N = len(X_raw)
 
-    # load pre-exported fused weights (no PyTorch needed)
     weights = dict(np.load(args.weights))
 
     print(f"Software (NumPy) Evaluation on Ultra96 CPU  —  {N} samples")
@@ -113,10 +109,8 @@ def main():
     sw_acc = float((sw_cls_all == y_cls_test).mean())
     sw_mae = float(np.mean(np.abs(sw_reg_all - y_reg_real)))
 
-    # Confusion matrix (numpy only, no sklearn)
     cm = confusion_matrix_numpy(y_cls_test, sw_cls_all, len(CLASS_NAMES))
 
-    # per-class accuracy
     print(f"\n--- Per-Class Accuracy ---")
     for c in range(len(CLASS_NAMES)):
         mask = y_cls_test == c
@@ -125,16 +119,13 @@ def main():
         acc_c = (sw_cls_all[mask] == c).mean()
         print(f"  {CLASS_NAMES[c]:<12} {acc_c:.4f}  ({int(mask.sum())} samples)")
 
-    # Print confusion matrix in text form
     print(f"\n--- Confusion Matrix ---")
     print(f"  (rows=true label, cols=predicted label)")
     print()
     
-    # Header with class names
     header = "         " + "".join(f"{name[:7]:>10}" for name in CLASS_NAMES)
     print(header)
     
-    # Matrix rows
     for i, true_name in enumerate(CLASS_NAMES):
         row_str = f"{true_name:<8}"
         for j in range(len(CLASS_NAMES)):
@@ -143,7 +134,6 @@ def main():
     
     print()
 
-    # summary
     print(f"\n{'='*55}")
     print(f"  ULTRA96 CPU SOFTWARE RESULTS")
     print(f"{'='*55}")

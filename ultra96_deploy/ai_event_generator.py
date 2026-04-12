@@ -14,7 +14,6 @@ INPUT_SCALE = np.array([ 1.97547972,  0.23852809,  1.83424926,  5.59901857,  2.5
 
 
 def parse_player_ball(payload: dict) -> list:
-    # extracts 6 floats [x,y,z,vx,vy,vz] from /playerBall JSON
     pos = payload['position']
     vel = payload['velocity']
     return [
@@ -24,7 +23,6 @@ def parse_player_ball(payload: dict) -> list:
 
 
 def build_opponent_ball(reg_output: np.ndarray, cls_idx: int) -> dict:
-    # packs regression output + class index into /opponentBall JSON
     return {
         'position': {
             'x':  round(float(reg_output[0]), 4),
@@ -41,7 +39,6 @@ def build_opponent_ball(reg_output: np.ndarray, cls_idx: int) -> dict:
 
 
 def random_player_ball() -> dict:
-    # generates a random plausible /playerBall for testing
     z = np.random.uniform(-2.0, 2.0, size=6).astype(np.float32)
     raw = INPUT_MEAN + z * INPUT_SCALE
     raw[2] = max(raw[2], 0.05)
@@ -60,7 +57,6 @@ def _softmax(logits):
     return e / e.sum()
 
 class AIEventGenerator:
-    # wraps FPGA (or fake) predictor; processes /playerBall -> /opponentBall
     def __init__(self, bitstream: str = "design_1.bit", use_fpga: bool = True):
         self.use_fpga = use_fpga
         self.predictor = None
@@ -77,7 +73,7 @@ class AIEventGenerator:
         raw_input = parse_player_ball(payload)
 
         if self.use_fpga:
-            reg, cls_idx, _, latency = self.predictor.predict_timed(raw_input)  # returns (reg, idx, name, time_us)
+            reg, cls_idx, _, latency = self.predictor.predict_timed(raw_input)
         else:
             reg, cls_idx, latency = self._fake_predict(raw_input)
 
@@ -91,7 +87,7 @@ class AIEventGenerator:
         raw_input = parse_player_ball(payload)
 
         if self.use_fpga:
-            reg, cls_idx, _, latency = self.predictor.predict_timed(raw_input)  # returns (reg, idx, name, time_us)
+            reg, cls_idx, _, latency = self.predictor.predict_timed(raw_input)
         else:
             reg, cls_idx, latency = self._fake_predict(raw_input)
 
@@ -111,7 +107,6 @@ class AIEventGenerator:
 
 
 def tcp_serve(gen: AIEventGenerator, host: str = "0.0.0.0", port: int = 3000):
-    # accepts TCP connections and dispatches newline-delimited JSON
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     srv.bind((host, port))

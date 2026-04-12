@@ -1,10 +1,3 @@
-"""
-Generate HLS test vectors with INT8-quantized golden reference.
-
-Usage:
-    python generate_test_vectors.py
-    python generate_test_vectors.py --n_per_class 5
-"""
 
 import argparse
 import json
@@ -88,7 +81,6 @@ def main():
     model.load_state_dict(torch.load(args.model, map_location='cpu', weights_only=True))
     model.eval()
 
-    # Extract and quantize trunk layers
     trunk = model.shared_trunk
     layers_info = []
     i = 0
@@ -128,7 +120,6 @@ def main():
         print(f"  cls_head_{i}: qscale={qs:.8f}")
     print()
 
-    # Pick n_per_class samples from test set
     selected_indices = []
     for c in range(len(CLASS_NAMES)):
         idxs = np.where(y_cls_test == c)[0]
@@ -144,11 +135,9 @@ def main():
     X_sel = X_test[selected_indices]
     y_cls_sel = y_cls_test[selected_indices]
 
-    # Reconstruct raw inputs from scaled data
     X_raw = X_sel * x_scale + x_mean
     X_scaled = (X_raw - x_mean) / x_scale
 
-    # Quantized inference
     h = X_scaled.astype(np.float32)
     for W_q, qscale, bias in layers_info:
         h = quantized_linear(h, W_q, qscale, bias, activation='relu6')
@@ -165,7 +154,6 @@ def main():
         h_cls = quantized_linear(h_cls, W_q, qscale, bias, activation=act)
     cls_pred = h_cls.argmax(axis=1)
 
-    # Generate C header
     lines = []
     lines.append("#ifndef TEST_VECTORS_H")
     lines.append("#define TEST_VECTORS_H")

@@ -19,9 +19,6 @@ N_REG_OUTPUT = 6
 N_CLS_OUTPUT = 6
 N_TOTAL_OUTPUT = N_REG_OUTPUT + N_CLS_OUTPUT
 
-# DMA Register Offsets (Direct Register / Simple Mode)
-# PYNQ's DMA class incorrectly uses _SGDMAChannel even when SG is disabled,
-# so we program the registers directly via MMIO.
 MM2S_DMACR  = 0x00
 MM2S_DMASR  = 0x04
 MM2S_SA     = 0x18
@@ -35,7 +32,6 @@ S2MM_LENGTH = 0x58
 
 
 class PickleballPredictor:
-    # raw-MMIO DMA driver: sends 6 floats to FPGA, reads back 12 (6 reg + 6 cls logits)
 
     def __init__(
         self,
@@ -123,7 +119,6 @@ class PickleballPredictor:
         return reg_output, cls_index, cls_name
 
     def predict_timed(self, raw_input: list) -> tuple:
-        # Returns (reg_output, cls_index, cls_name, total_ms, inference_ms, comm_ms)
         assert len(raw_input) == N_INPUT, f"Expected {N_INPUT} inputs, got {len(raw_input)}"
 
         t_total_start = time.perf_counter()

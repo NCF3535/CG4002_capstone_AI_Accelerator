@@ -5,13 +5,11 @@ from typing import Tuple, Optional
 
 
 class ReLU6(nn.Module):
-    # min(max(0,x),6) — bounded for INT8-safe HLS export
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.clamp(x, min=0, max=6)
 
 
 class MTLPickleballNet(nn.Module):
-    # shared trunk → regression head (6D racket state) + classification head (6 shot types)
     
     def __init__(
         self,
@@ -31,7 +29,6 @@ class MTLPickleballNet(nn.Module):
         self.regression_output_dim = regression_output_dim
         self.num_classes = num_classes
         
-        # Build shared trunk
         trunk_layers = []
         current_dim = input_dim
         
@@ -76,7 +73,6 @@ class MTLPickleballNet(nn.Module):
 
 
 class FocalLoss(nn.Module):
-    # down-weights easy examples: FL(p) = -alpha * (1-p)^gamma * log(p)
     def __init__(self, alpha: Optional[torch.Tensor] = None, gamma: float = 2.0, reduction: str = 'mean'):
         super().__init__()
         self.gamma = gamma
@@ -88,7 +84,7 @@ class FocalLoss(nn.Module):
     
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         ce_loss = F.cross_entropy(logits, targets, weight=self.alpha, reduction='none')
-        pt = torch.exp(-ce_loss)  # probability of correct class
+        pt = torch.exp(-ce_loss)
         focal_loss = ((1 - pt) ** self.gamma) * ce_loss
         
         if self.reduction == 'mean':
@@ -97,7 +93,6 @@ class FocalLoss(nn.Module):
 
 
 class MTLLoss(nn.Module):
-    # weighted sum of MSE (regression) + CE/Focal (classification)
     
     def __init__(
         self,
@@ -139,7 +134,6 @@ class MTLLoss(nn.Module):
 
 
 def create_model(config: dict) -> MTLPickleballNet:
-    # factory: creates model from config dict
     return MTLPickleballNet(
         input_dim=config.get('input_dim', 6),
         hidden_dim=config.get('hidden_dim', 64),
@@ -157,11 +151,9 @@ def export_to_onnx(
     input_dim: int = 6,
     opset_version: int = 11
 ) -> None:
-    # exports model to ONNX with dynamic batch axis
     model_cpu = model.cpu()
     model_cpu.eval()
     dummy_input = torch.randn(1, input_dim)
-    # Use legacy ONNX export for compatibility
     torch.onnx.export(
         model_cpu,
         dummy_input,
@@ -195,7 +187,6 @@ if __name__ == '__main__':
     
     model = create_model(config)
     print(f"Model created with {model.get_num_parameters()} parameters")
-    # Test forward pass
     batch_size = 32
     x = torch.randn(batch_size, 6)
     reg_out, cls_out = model(x)
@@ -203,7 +194,6 @@ if __name__ == '__main__':
     print(f"Input shape: {x.shape}")
     print(f"Regression output shape: {reg_out.shape}")
     print(f"Classification output shape: {cls_out.shape}")
-    # Test loss computation
     loss_fn = MTLLoss(regression_weight=1.0, classification_weight=1.0)
     reg_target = torch.randn(batch_size, 6)
     cls_target = torch.randint(0, 6, (batch_size,))

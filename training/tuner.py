@@ -1,12 +1,3 @@
-"""
-Multi-Objective Optuna Tuner for Pickleball MTL Model.
-Objectives: Normalized MAE (minimize) and -F1 (minimize).
-
-Run after prepare_dataset.py:
-    python tuner.py --n_trials 5000
-
-Best trial params are saved to ./artifacts/best_params.json.
-"""
 
 import argparse
 import json
@@ -124,7 +115,6 @@ def evaluate(model: nn.Module, loader: DataLoader, loss_fn: MTLLoss) -> Dict[str
     }
 
 
-# Singleton so dataloaders are only created once per process
 _RESOURCES: Dict = {}
 
 def get_resources(data: Dict[str, np.ndarray], batch_size: int) -> Dict:
@@ -204,7 +194,6 @@ def objective(trial: Trial, data: Dict[str, np.ndarray], n_epochs: int = 50) -> 
 
 
 def save_best_params(study: optuna.Study, output_dir: str):
-    """Save Pareto-front trials and pick the best balanced trial."""
     best_trials = study.best_trials
     if not best_trials:
         print("No completed trials to save.")
@@ -215,7 +204,6 @@ def save_best_params(study: optuna.Study, output_dir: str):
         norm_mae, neg_f1 = t.values
         pareto.append({"trial": t.number, "norm_mae": norm_mae, "f1": -neg_f1, "params": t.params})
 
-    # Best balanced = minimise norm_mae - f1 (both equally weighted)
     best = min(pareto, key=lambda d: d["norm_mae"] - d["f1"])
 
     out = {"pareto_front": pareto, "best_balanced": best}

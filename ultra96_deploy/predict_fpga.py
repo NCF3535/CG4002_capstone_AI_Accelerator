@@ -12,7 +12,6 @@ REG_NAMES   = ['racket_x', 'racket_y', 'racket_z', 'racket_vx', 'racket_vy', 'ra
 
 
 def load_test_vectors_by_class():
-    # un-scales test set back to raw, groups by class label
     splits_path = os.path.join(SCRIPT_DIR, "splits.npz")
     scaler_path = os.path.join(SCRIPT_DIR, "scaler_params.json")
     data = np.load(splits_path)
@@ -38,7 +37,6 @@ def softmax(logits):
 
 
 def display_result(raw_input, reg_real, cls_idx, cls_logits, time_ms):
-    # pretty-prints input, class probabilities bar chart, regression, and latency
     probs = softmax(cls_logits)
 
     print(f"\n{'='*50}")

@@ -1,36 +1,3 @@
-"""
-Pickleball Shot Dataset Generator — v1.0
-=========================================
-Generates a physically grounded synthetic dataset for training a bot AI
-that predicts where to move and what shot to return.
-
-Physics profiles (set PHYSICS_PROFILE below):
-  main_scene     — MainScene.unity:    Ball2 uses bounce.physicMaterial
-                   COR=1.0, friction=0.0
-  prefab_default — GameSpaceRoot.prefab: Ball2 has no material (Unity defaults)
-                   COR=0.5, friction=0.3
-
-Constants sourced from project files:
-  TimeManager.asset       Fixed Timestep     0.02 s
-  DynamicsManager.asset   gravity            -9.81, bounceThreshold 2.0
-  BallAerodynamics.cs     dragCoefficient    0.040
-                          magnusCoefficient  0.00075
-                          maxAngularSpeed    80.0 rad/s
-  GameSpaceRoot.prefab    Ball2 m_AngularDrag 0.05
-  PaddleHitController.cs  maxBallSpeed       22.0 m/s
-  bounce.physicMaterial   bounciness 1.0, friction 0.0
-  Unity material default  bounciness 0.0, friction 0.6
-
-Coordinate system (PracticeBallController.cs):
-  x  lateral   [-3.5, 3.5]   centre = 0
-  y  height    [0, ~10]      0 = court surface
-  z  depth     [-4, 12]      net at z=4, player side z<4, bot side z>4
-
-Output files (saved to ./data/):
-  pickleball_shot_dataset.csv    — 13 cols, return execution model
-  pickleball_policy_dataset.csv  — 8 cols, shot selection model
-  pickleball_shot_dataset_debug.csv — all cols including debug fields
-"""
 
 import numpy as np
 import pandas as pd
@@ -224,37 +191,28 @@ def simulate_to_bot(x0, y0, z0, vx0, vy0, vz0, wx0, wy0, wz0):
 
 
 def choose_bot_shot(contact_pos, contact_vel, bounced):
-    """
-    Realistic shot selection. Most boundaries use y_c/x_c (not in model inputs)
-    alongside contact_vel features — model must infer position, giving ~88-93% F1.
-    """
     vx, vy, vz = contact_vel
     spd = math.sqrt(vx*vx + vy*vy + vz*vz)
     x_c, y_c = contact_pos[0], contact_pos[1]
 
     if not bounced:
         if spd >= 14.0:
-            # Very fast volley: HandBattle only if central + high, else SpeedUp
             return "HandBattle" if abs(x_c) < 1.5 and y_c >= 1.0 else "SpeedUp"
         elif spd >= 10.0:
-            # Fast volley: BOTH vy AND y_c decide — creates genuine inference difficulty
-            if vy < -1.0:             # steeply falling → always SpeedUp
+            if vy < -1.0:
                 return "SpeedUp"
-            elif y_c < 0.8:           # low contact, not steeply falling → SpeedUp
+            elif y_c < 0.8:
                 return "SpeedUp"
-            else:                     # moderate height + not steep → Dink
+            else:
                 return "Dink"
         elif spd >= 6.0:
-            # Medium volley: y_c split — low = Drop, high = Dink
             return "Dink" if y_c >= 0.85 else "Drop"
         else:
             return "Dink"
     else:
         if spd >= 8.0:
-            # Fast bounce: y_c decides Drive vs SpeedUp
             return "Drive" if y_c >= 1.0 else "SpeedUp"
         elif spd >= 5.0:
-            # Medium bounce: y_c and x_c both matter
             if y_c >= 1.0:
                 return "Drive"
             elif abs(x_c) < 1.5:
@@ -262,7 +220,6 @@ def choose_bot_shot(contact_pos, contact_vel, bounced):
             else:
                 return "Lob"
         else:
-            # Slow bounce: y_c decides Lob vs Drop
             return "Lob" if y_c < 0.9 else "Drop"
 
 
@@ -279,7 +236,6 @@ BOT_RETURN_CFG = {
 def make_bot_return(contact_pos, shot_type):
     cfg = BOT_RETURN_CFG[shot_type]
     x_c, y_c, z_c = contact_pos
-    # Aim cross-court (opposite x from contact) — deterministic, varies with input
     x_t = float(max(cfg[0][0], min(cfg[0][1], -x_c)))
     y_t = (cfg[1][0] + cfg[1][1]) / 2
     z_t = (cfg[2][0] + cfg[2][1]) / 2

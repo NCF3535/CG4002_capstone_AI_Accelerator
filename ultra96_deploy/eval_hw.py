@@ -25,7 +25,6 @@ def main():
     parser.add_argument("--n_samples", type=int, default=100, help="Test samples to evaluate")
     args = parser.parse_args()
 
-    # load test data
     data = np.load(args.data)
     X_test_scaled = data['X_test']
     y_cls_test = data['y_cls_test']
@@ -39,7 +38,6 @@ def main():
     y_mean = np.array(scaler['regression_scaler']['mean'], dtype=np.float32)
     y_scale = np.array(scaler['regression_scaler']['scale'], dtype=np.float32)
 
-    # convert to raw (un-scaled) for FPGA
     X_raw = X_test_scaled * x_scale + x_mean
     y_reg_real = y_reg_test * y_scale + y_mean
 
@@ -52,14 +50,11 @@ def main():
     print(f"FPGA Hardware Evaluation  —  {N} test samples")
     print(f"{'='*55}")
 
-    # load FPGA
     pred = PickleballPredictor(args.bitstream)
 
-    # warmup
     for _ in range(10):
         pred.predict(X_raw[0].tolist())
 
-    # run inference
     hw_times = []
     hw_inf_times = []
     hw_comm_times = []
@@ -88,13 +83,11 @@ def main():
     hw_acc = float((hw_cls_all == y_cls_test).mean())
     hw_mae = float(np.mean(np.abs(hw_reg_all - y_reg_real)))
 
-    # confusion matrix (numpy only)
     num_classes = len(CLASS_NAMES)
     cm = np.zeros((num_classes, num_classes), dtype=int)
     for i in range(len(y_cls_test)):
         cm[y_cls_test[i], hw_cls_all[i]] += 1
 
-    # per-class accuracy
     print(f"\n--- Per-Class Accuracy ---")
     for c in range(len(CLASS_NAMES)):
         mask = y_cls_test == c
@@ -103,7 +96,6 @@ def main():
         acc_c = (hw_cls_all[mask] == c).mean()
         print(f"  {CLASS_NAMES[c]:<12} {acc_c:.4f}  ({int(mask.sum())} samples)")
 
-    # Text-based confusion matrix
     print(f"\n--- Confusion Matrix ---")
     print(f"  (rows=true, cols=predicted)")
     print()
@@ -116,7 +108,6 @@ def main():
         print(row_str)
     print()
 
-    # summary
     print(f"\n{'='*55}")
     print(f"  FPGA HARDWARE RESULTS")
     print(f"{'='*55}")
